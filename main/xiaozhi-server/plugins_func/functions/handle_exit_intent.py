@@ -8,25 +8,25 @@ handle_exit_intent_function_desc = {
     "type": "function",
     "function": {
         "name": "handle_exit_intent",
-        "description": "当用户想结束对话或需要退出系统时调用",
+        "description": "当用户想结束对话或需要退出系统时调用,比如说再见、拜拜、闭嘴、关机、休息等",
         "parameters": {
             "type": "object",
             "properties": {
                 "say_goodbye": {
                     "type": "string",
                     "description": "和用户友好结束对话的告别语",
-                }
+                },
             },
             "required": ["say_goodbye"],
         },
     },
-}
+} 
 
 
 @register_function(
     "handle_exit_intent", handle_exit_intent_function_desc, ToolType.SYSTEM_CTL
 )
-def handle_exit_intent(conn, say_goodbye: str | None = None):
+def FF(conn, say_goodbye: str | None = None):
     # 处理退出意图
     try:
         if say_goodbye is None:

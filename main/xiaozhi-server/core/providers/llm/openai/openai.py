@@ -39,6 +39,7 @@ class LLMProvider(LLMProviderBase):
             )
 
             is_active = True
+            
             for chunk in responses:
                 try:
                     # 检查是否存在有效的choice且content不为空
@@ -67,9 +68,9 @@ class LLMProvider(LLMProviderBase):
     def response_with_functions(self, session_id, dialogue, functions=None):
         try:
             stream = self.client.chat.completions.create(
-                model=self.model_name, messages=dialogue, stream=True, tools=functions
+                model=self.model_name, messages=dialogue, stream=True, stream_options={"include_usage": True}, tools=functions
             )
-
+        
             for chunk in stream:
                 # 检查是否存在有效的choice且content不为空
                 if getattr(chunk, "choices", None):

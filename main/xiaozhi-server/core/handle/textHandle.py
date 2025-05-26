@@ -33,7 +33,7 @@ async def handleTextMessage(conn, message):
                     f"客户端拾音模式：{conn.client_listen_mode}"
                 )
             if msg_json["state"] == "start":
-                conn.client_have_voice = True
+                conn.client_have_voice = False
                 conn.client_voice_stop = False
             elif msg_json["state"] == "stop":
                 conn.client_have_voice = True
@@ -52,6 +52,8 @@ async def handleTextMessage(conn, message):
                     is_wakeup_words = filtered_text in conn.config.get("wakeup_words")
                     # 是否开启唤醒词回复
                     enable_greeting = conn.config.get("enable_greeting", True)
+                    role = conn.config.get("role") 
+                    wakeup_response = conn.config.get("wakeup_response", "我在！")
 
                     if is_wakeup_words and not enable_greeting:
                         # 如果是唤醒词，且关闭了唤醒词回复，就不用回答

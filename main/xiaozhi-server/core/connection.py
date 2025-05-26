@@ -8,6 +8,7 @@ import time
 import queue
 import asyncio
 import traceback
+import shutil
 
 import threading
 import websockets
@@ -131,6 +132,14 @@ class ConnectionHandler:
         self.iot_descriptors = {}
         self.func_handler = None
 
+        # 测试时间
+        self.test_start = None
+        self.test_end = None
+
+        # 保存audio
+        self.tmp_audio_path = None
+        self.save_audio = config.get("save_audio", False)
+
         self.cmd_exit = self.config["exit_commands"]
         self.max_cmd_length = 0
         for cmd in self.cmd_exit:
@@ -180,6 +189,8 @@ class ConnectionHandler:
 
             # 进行认证
             await self.auth.authenticate(self.headers)
+            
+            await self.auth.set_device_online()
 
             # 认证通过,继续处理
             self.websocket = ws
@@ -212,7 +223,8 @@ class ConnectionHandler:
                 async for message in self.websocket:
                     await self._route_message(message)
             except websockets.exceptions.ConnectionClosed:
-                self.logger.bind(tag=TAG).info("客户端断开连接")
+                await self.auth.set_device_offline()
+                self.logger.bind(tag=TAG).warning(f"客户端断开连接{self.auth.device_id}")
 
         except AuthenticationError as e:
             self.logger.bind(tag=TAG).error(f"Authentication failed: {str(e)}")
@@ -330,6 +342,8 @@ class ConnectionHandler:
             self.asr = self._asr
         """加载记忆"""
         self._initialize_memory()
+        """加载路径"""
+        self._initialize_path()
         """加载意图识别"""
         self._initialize_intent()
         """初始化上报线程"""
@@ -392,6 +406,7 @@ class ConnectionHandler:
             self.config["selected_module"]["TTS"] = private_config["selected_module"][
                 "TTS"
             ]
+            
         if private_config.get("LLM", None) is not None:
             init_llm = True
             self.config["LLM"] = private_config["LLM"]
@@ -623,6 +638,7 @@ class ConnectionHandler:
                             # 更新已处理字符位置
                             processed_chars += len(segment_text_raw)
 
+        
         # 处理function call
         if tool_call_flag:
             bHasError = False
@@ -668,8 +684,10 @@ class ConnectionHandler:
                 self._handle_function_result(result, function_call_data, text_index + 1)
 
         # 处理最后剩余的文本
+        if len(response_message) and response_message[0] == '[]':
+            response_message = []
         full_text = "".join(response_message)
-        remaining_text = full_text[processed_chars:]
+        remaining_text = full_text[processed_chars:].strip()
         if remaining_text:
             segment_text = get_string_no_punctuation_or_emoji(remaining_text)
             if segment_text:
@@ -683,7 +701,7 @@ class ConnectionHandler:
         # 存储对话内容
         if len(response_message) > 0:
             self.dialogue.put(
-                Message(role="assistant", content="".join(response_message))
+                Message(role="assistant", content="".join(response_message), token_usage=token_usage)
             )
 
         self.llm_finish_task = True
@@ -841,7 +859,10 @@ class ConnectionHandler:
                     and os.path.exists(tts_file)
                     and tts_file.startswith(self.tts.output_file)
                 ):
-                    os.remove(tts_file)
+                    if self.save_audio:
+                        self.move_audio(tts_file)
+                    else:
+                        os.remove(tts_file)
             except Exception as e:
                 self.logger.bind(tag=TAG).error(f"TTS任务处理错误: {e}")
                 self.clearSpeakStatus()
@@ -932,6 +953,8 @@ class ConnectionHandler:
         if self.tts_first_text_index == -1:
             self.logger.bind(tag=TAG).info(f"大模型说出第一句话: {text}")
             self.tts_first_text_index = text_index
+            if self.test_start:
+                self.logger.bind(tag=TAG).info('-'*32 + ' LLM time: ' + str(time.time() - self.test_start))
         self.tts_last_text_index = text_index
 
     async def close(self, ws=None):

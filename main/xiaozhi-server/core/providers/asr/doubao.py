@@ -10,6 +10,7 @@ import gzip
 
 import opuslib_next
 from core.providers.asr.base import ASRProviderBase
+import asyncio
 
 from config.logger import setup_logging
 
@@ -101,6 +102,9 @@ class ASRProvider(ASRProviderBase):
 
         # 确保输出目录存在
         os.makedirs(self.output_dir, exist_ok=True)
+    
+    def get_time(self):
+        return time.strftime("%H:%M:%S", time.localtime())
 
     def save_audio_to_file(self, pcm_data: List[bytes], session_id: str) -> str:
         """PCM数据保存为WAV文件"""
@@ -115,6 +119,17 @@ class ASRProvider(ASRProviderBase):
             wf.writeframes(b"".join(pcm_data))
 
         return file_path
+
+    async def async_save_audio_to_file(self, opus_data: List[bytes], session_id: str, audio_path) -> str:
+        """异步保存音频文件（需要安装aiofiles）"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, 
+            self.save_audio_to_file,  # 复用原有同步方法
+            opus_data, 
+            session_id, 
+            audio_path
+        )
 
     @staticmethod
     def _generate_header(

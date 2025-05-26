@@ -18,7 +18,11 @@ get_time_function_desc = {
     "function": {
         "name": "get_time",
         "description": "获取今天日期或者当前时间信息",
-        "parameters": {"type": "object", "properties": {}, "required": []},
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
     },
 }
 
@@ -33,9 +37,8 @@ def get_time():
     current_date = now.strftime("%Y-%m-%d")
     current_weekday = WEEKDAY_MAP[now.strftime("%A")]
     response_text = (
-        f"当前日期: {current_date}，当前时间: {current_time}， {current_weekday}"
+        f"当前日期: {current_date}，当前时间: {current_time}，{current_weekday}"
     )
-
     return ActionResponse(Action.REQLLM, response_text, None)
 
 

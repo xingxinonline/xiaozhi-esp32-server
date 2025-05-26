@@ -8,6 +8,8 @@ from plugins_func.register import (
     DeviceTypeRegistry,
 )
 from plugins_func.functions.hass_init import append_devices_to_prompt
+import asyncio
+from core.handle.sendAudioHandle import sendAudio
 
 TAG = __name__
 
@@ -57,8 +59,7 @@ class FunctionHandler:
 
     def register_nessary_functions(self):
         """注册必要的函数"""
-        self.function_registry.register_function("handle_exit_intent")
-        self.function_registry.register_function("plugin_loader")
+        self.function_registry.register_function("MusicPlayer")
         self.function_registry.register_function("get_time")
         self.function_registry.register_function("get_lunar")
         self.function_registry.register_function("handle_speaker_volume_or_screen_brightness")
@@ -82,7 +83,7 @@ class FunctionHandler:
             funcItem = self.get_function(function_name)
             if not funcItem:
                 return ActionResponse(
-                    action=Action.NOTFOUND, result="没有找到对应的函数", response=""
+                    action=Action.NOTFOUND, result="看来这个问题难住我啦，晚点儿再来考考我吧", response=""
                 )
             func = funcItem.func
             arguments = function_call_data["arguments"]
@@ -101,7 +102,7 @@ class FunctionHandler:
                 return func(conn, **arguments)
             else:
                 return ActionResponse(
-                    action=Action.NOTFOUND, result="没有找到对应的函数", response=""
+                    action=Action.NOTFOUND, result="看来这个问题难住我啦，晚点儿再来考考我吧", response=""
                 )
         except Exception as e:
             self.conn.logger.bind(tag=TAG).error(f"处理function call错误: {e}")

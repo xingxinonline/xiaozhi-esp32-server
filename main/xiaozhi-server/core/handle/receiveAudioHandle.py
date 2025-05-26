@@ -158,3 +158,30 @@ async def check_bind_device(conn):
         music_path = "config/assets/bind_not_found.wav"
         opus_packets, _ = audio_to_data(music_path)
         conn.audio_play_queue.put((opus_packets, text, 0))
+
+async def startGyroscopeChat(conn):
+    conn.client_abort = False
+    shake_message = "此时小朋友在和你互动，你感觉到了来自小朋友的剧烈摇晃"
+    # 异步发送 stt 信息
+    await send_stt_message(conn, shake_message)
+    # 提交到执行器处理聊天
+    conn.executor.submit(conn.chat, shake_message)
+
+async def startFriendChat(conn, new_friend):
+    conn.client_abort = False
+    new_friend = int(new_friend)
+    if new_friend < 0:
+        new_friend = abs(new_friend)
+        if new_friend == 1:        
+            friend_message = f"此时有1个小伙伴走远了，和它告个别吧。"
+        else:
+            friend_message = f"此时有{new_friend}个小伙伴走远了，和它们告个别吧。"
+    else:
+        if new_friend == 1:
+            friend_message = f"此时你遇见了另一个小伙伴，和它打个招呼吧。"
+        else:
+            friend_message = f"此时你遇见了{new_friend}个小伙伴，和它们打个招呼吧。" 
+    # 异步发送 stt 信息
+    await send_stt_message(conn, friend_message)
+    # 提交到执行器处理聊天
+    conn.executor.submit(conn.chat, friend_message)

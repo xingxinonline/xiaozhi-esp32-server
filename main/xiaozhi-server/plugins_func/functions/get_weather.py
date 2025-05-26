@@ -11,11 +11,11 @@ GET_WEATHER_FUNCTION_DESC = {
     "type": "function",
     "function": {
         "name": "get_weather",
-        "description": (
+        "description": """
             "获取某个地点的天气，用户应提供一个位置，比如用户说杭州天气，参数为：杭州。"
-            "如果用户说的是省份，默认用省会城市。如果用户说的不是省份或城市而是一个地名，默认用该地所在省份的省会城市。"
-            "如果用户没有指明地点，说“天气怎么样”，”今天天气如何“，location参数为空"
-        ),
+            "如果用户说的是省份，默认用省会城市。如果用户说的不是省份或城市而是一个地名，"
+            "默认用该地所在省份的省会城市。"
+        """,
         "parameters": {
             "type": "object",
             "properties": {
@@ -32,7 +32,7 @@ GET_WEATHER_FUNCTION_DESC = {
         },
     },
 }
-
+        
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -151,45 +151,36 @@ def parse_weather_info(soup):
 
 @register_function("get_weather", GET_WEATHER_FUNCTION_DESC, ToolType.SYSTEM_CTL)
 def get_weather(conn, location: str = None, lang: str = "zh_CN"):
-    api_host = conn.config["plugins"]["get_weather"].get("api_host", "mj7p3y7naa.re.qweatherapi.com")
-    api_key = conn.config["plugins"]["get_weather"].get("api_key", "a861d0d5e7bf4ee1a83d9a9e4f96d4da")
-    default_location = conn.config["plugins"]["get_weather"]["default_location"]
-    client_ip = conn.client_ip
-    # 优先使用用户提供的location参数
-    if not location:
-        # 通过客户端IP解析城市
-        if client_ip:
-            # 动态解析IP对应的城市信息
-            ip_info = get_ip_info(client_ip, logger)
-            location = ip_info.get("city") if ip_info and "city" in ip_info else None
+    if location is None:
+        location="北京"
+    # 高德天气API URL
+    url = "http://restapi.amap.com/v3/weather/weatherInfo"
+    
+    # 请求参数
+    params = {
+        'city': location,  # 城市名称
+        'key': '48a7ec8c2cebc418b33e6080fdd853b8',     # 高德API Key
+        'extensions': 'base'  # 'base'：返回实况天气，'all'：返回预报天气，选择base即可
+    }
+    
+    # 发起GET请求
+    response = requests.get(url, params=params)
+    
+    weather_report = ""
+    if response.status_code == 200:
+        data = response.json()  # 获取返回的JSON数据
+        
+        if data['status'] == '1' and data['lives']:  # 如果请求成功
+            # 获取当前天气信息
+            weather_info = data['lives'][0]
+            city = weather_info['city']
+            temperature = weather_info['temperature']
+            weather = weather_info['weather']
+            wind_direction = weather_info['winddirection']
+            wind_power = weather_info['windpower']
+            weather_report = f"{city} 当前天气: {weather}, 温度: {temperature}度, 风向: {wind_direction}, 风力: {wind_power}"
         else:
-            # 若IP解析失败或无IP，使用默认位置
-            location = default_location
-    city_info = fetch_city_info(location, api_key, api_host)
-    if not city_info:
-        return ActionResponse(
-            Action.REQLLM, f"未找到相关的城市: {location}，请确认地点是否正确", None
-        )
-    soup = fetch_weather_page(city_info["fxLink"])
-    if not soup:
-        return ActionResponse(Action.REQLLM, None, "请求失败")
-    city_name, current_abstract, current_basic, temps_list = parse_weather_info(soup)
-
-    weather_report = f"您查询的位置是：{city_name}\n\n当前天气: {current_abstract}\n"
-
-    # 添加有效的当前天气参数
-    if current_basic:
-        weather_report += "详细参数：\n"
-        for key, value in current_basic.items():
-            if value != "0":  # 过滤无效值
-                weather_report += f"  · {key}: {value}\n"
-
-    # 添加7天预报
-    weather_report += "\n未来7天预报：\n"
-    for date, weather, high, low in temps_list:
-        weather_report += f"{date}: {weather}，气温 {low}~{high}\n"
-
-    # 提示语
-    weather_report += "\n（如需某一天的具体天气，请告诉我日期）"
-
+            weather_report = "工具出错"
+    else:
+        weather_report = "天气工具查询失败"
     return ActionResponse(Action.REQLLM, weather_report, None)

@@ -17,6 +17,7 @@ class Message:
         self.content = content
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
+        self.token_usage = token_usage
 
 
 class Dialogue:

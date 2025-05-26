@@ -166,3 +166,9 @@ main/manager-web/.webpack_cache/
 main/xiaozhi-server/mysql
 uploadfile
 .vscode
+
+# my wakeup
+main/xiaozhi-server/config/assets/my_wakeup_words.wav
+
+# music
+main/xiaozhi-server/music/*.mp3
